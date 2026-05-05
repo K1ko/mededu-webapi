@@ -1,0 +1,30 @@
+name: mededu-webapi
+
+services:
+  mongo_db:
+    image: mongo:8.2.6
+    container_name: mededu_mongo_db
+    restart: always
+    ports:
+      - ${MEDEDU_API_MONGODB_PORT}:27017
+    volumes:
+      - mededu_db_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MEDEDU_API_MONGODB_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MEDEDU_API_MONGODB_PASSWORD}
+  mongo_express:
+    image: mongo-express
+    container_name: mededu_mongo_express
+    restart: always
+    ports:
+      - ${MEDEDU_API_MONGO_EXPRESS_PORT}:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MEDEDU_API_MONGODB_USERNAME}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MEDEDU_API_MONGODB_PASSWORD}
+      ME_CONFIG_MONGODB_SERVER: mongo_db
+      ME_CONFIG_BASICAUTH_USERNAME: mexpress
+      ME_CONFIG_BASICAUTH_PASSWORD: mexpress
+    links:
+      - mongo_db
+volumes:
+  mededu_db_data: {}
