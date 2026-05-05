@@ -14,6 +14,9 @@ $env:MEDEDU_API_MONGODB_USERNAME = "root"
 $env:MEDEDU_API_MONGODB_PASSWORD = "neUhaDnes"
 $env:MEDEDU_API_MONGODB_PORT = "27018"
 $env:MEDEDU_API_MONGO_EXPRESS_PORT = "8082"
+$env:MEDEDU_API_MONGODB_DATABASE = "kcrp-mededu"
+$env:MEDEDU_API_MONGODB_COLLECTION = "trainings"
+$env:MEDEDU_API_MONGODB_TIMEOUT_SECONDS = "10"
 
 function mongo {
     docker compose --env-file ${ProjectRoot}/deployments/docker-compose/.env --file ${ProjectRoot}/deployments/docker-compose/compose.yaml $args
