@@ -34,8 +34,14 @@ switch ($command) {
     "openapi" {
         docker run --rm -ti -v ${ProjectRoot}:/local openapitools/openapi-generator-cli generate -c /local/scripts/generator-cfg.yaml
     }
+    "test" {
+        go test -v ./...
+    }
     "mongo" {
         mongo up
+    }
+    "docker" {
+        docker build -t xcervenkak/mededu-webapi:local-build -f ${ProjectRoot}/build/docker/Dockerfile .
     }
     default {
         throw "Unknown command: $command"

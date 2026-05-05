@@ -1,0 +1,9 @@
+internal/mededu/api_*
+internal/mededu/model_*
+internal/mededu/routers.go
+build/
+deployments/
+.git/
+.github/
+*.log
+*.tmp
