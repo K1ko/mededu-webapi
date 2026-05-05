@@ -1,0 +1,9 @@
+internal/mededu/README.md
+internal/mededu/api_departments.go
+internal/mededu/api_trainings.go
+internal/mededu/model_error_response.go
+internal/mededu/model_training.go
+internal/mededu/model_training_input.go
+internal/mededu/model_training_status.go
+internal/mededu/model_training_type.go
+internal/mededu/routers.go

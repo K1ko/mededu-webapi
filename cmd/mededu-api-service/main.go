@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/K1ko/mededu-webapi/api"
+	"github.com/K1ko/mededu-webapi/internal/mededu"
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,6 +25,13 @@ func main() {
 
 	engine := gin.New()
 	engine.Use(gin.Recovery())
+
+	handleFunctions := mededu.ApiHandleFunctions{
+		DepartmentsAPI: mededu.NewDepartmentsAPI(),
+		TrainingsAPI:   mededu.NewTrainingsAPI(),
+	}
+	mededu.NewRouterWithGinEngine(engine, handleFunctions)
+
 	engine.GET("/openapi", api.HandleOpenAPI)
 
 	if err := engine.Run(":" + port); err != nil {
