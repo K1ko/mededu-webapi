@@ -1,0 +1,416 @@
+openapi: 3.0.0
+info:
+  title: MedEdu API
+  description: API pre spravu katalogu internych skoleni nemocnicneho personalu.
+  version: 1.0.0
+  contact:
+    name: Tim MedEdu
+    email: xcervenkak@stuba.sk
+servers:
+  - url: /api
+tags:
+  - name: trainings
+    description: Katalog internych skoleni
+  - name: departments
+    description: Oddelenia a odbornosti pouzivane pri planovani skoleni
+
+paths:
+  /trainings:
+    get:
+      tags:
+        - trainings
+      operationId: listTrainings
+      summary: Zoznam skoleni
+      description: Vrati vsetky dostupne skolenia vratane kapacity, obsadenosti a stavu.
+      parameters:
+        - name: department
+          in: query
+          required: false
+          description: Volitelny filter podla oddelenia alebo odbornosti.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Zoznam skoleni bol nacitany.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Training"
+              examples:
+                default:
+                  $ref: "#/components/examples/TrainingListExample"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags:
+        - trainings
+      operationId: createTraining
+      summary: Vytvorenie skolenia
+      description: Vytvori nove interne skolenie v katalogu.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrainingInput"
+            examples:
+              default:
+                $ref: "#/components/examples/TrainingInputExample"
+      responses:
+        "201":
+          description: Skolenie bolo vytvorene.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Training"
+              examples:
+                default:
+                  $ref: "#/components/examples/TrainingExample"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /trainings/{trainingId}:
+    get:
+      tags:
+        - trainings
+      operationId: getTraining
+      summary: Detail skolenia
+      description: Vrati detail jedneho skolenia podla identifikatora.
+      parameters:
+        - $ref: "#/components/parameters/TrainingId"
+      responses:
+        "200":
+          description: Detail skolenia bol nacitany.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Training"
+              examples:
+                default:
+                  $ref: "#/components/examples/TrainingExample"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    put:
+      tags:
+        - trainings
+      operationId: updateTraining
+      summary: Uprava skolenia
+      description: Aktualizuje termin, kapacitu, lektora, miesto, popis, poziadavky alebo stav skolenia.
+      parameters:
+        - $ref: "#/components/parameters/TrainingId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrainingInput"
+            examples:
+              default:
+                $ref: "#/components/examples/TrainingInputExample"
+      responses:
+        "200":
+          description: Skolenie bolo upravene.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Training"
+              examples:
+                default:
+                  $ref: "#/components/examples/TrainingExample"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    delete:
+      tags:
+        - trainings
+      operationId: deleteTraining
+      summary: Zrusenie alebo odstranenie skolenia
+      description: Odstrani chybne vytvorene skolenie alebo pripravi endpoint pre jeho zrusenie v backende.
+      parameters:
+        - $ref: "#/components/parameters/TrainingId"
+      responses:
+        "204":
+          description: Skolenie bolo odstranene.
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /departments:
+    get:
+      tags:
+        - departments
+      operationId: listDepartments
+      summary: Zoznam oddeleni
+      description: Vrati zoznam oddeleni a odbornosti, pre ktore je mozne planovat skolenia.
+      responses:
+        "200":
+          description: Zoznam oddeleni bol nacitany.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+              examples:
+                default:
+                  $ref: "#/components/examples/DepartmentListExample"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+components:
+  parameters:
+    TrainingId:
+      name: trainingId
+      in: path
+      required: true
+      description: Jedinecny identifikator skolenia.
+      schema:
+        type: string
+        example: urgent-safety-2026-05
+
+  responses:
+    BadRequest:
+      description: Neplatne vstupne data.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            default:
+              value:
+                message: Kapacita musi byt aspon 1.
+    NotFound:
+      description: Zaznam sa nenasiel.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            default:
+              value:
+                message: Skolenie nebolo najdene.
+    ServerError:
+      description: Interna chyba servera.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            default:
+              value:
+                message: Nepodarilo sa nacitat data.
+
+  schemas:
+    TrainingStatus:
+      type: string
+      enum:
+        - planned
+        - cancelled
+        - archived
+      example: planned
+    TrainingType:
+      type: string
+      enum:
+        - mandatory
+        - department
+        - specialization
+        - online
+      example: mandatory
+    Training:
+      type: object
+      required:
+        - id
+        - title
+        - type
+        - department
+        - startAt
+        - capacity
+        - lecturer
+        - status
+        - occupied
+        - waitlisted
+      properties:
+        id:
+          type: string
+          example: urgent-safety-2026-05
+        title:
+          type: string
+          minLength: 3
+          example: BOZP pre urgentny prijem
+        type:
+          $ref: "#/components/schemas/TrainingType"
+        department:
+          type: string
+          example: Urgent
+        startAt:
+          type: string
+          format: date-time
+          example: "2026-05-20T08:00:00Z"
+        capacity:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 20
+        lecturer:
+          type: string
+          example: Mgr. Jana Novakova
+        location:
+          type: string
+          example: Skoliaca miestnost A
+        onlineLink:
+          type: string
+          description: Online link skolenia; prazdny retazec znamena, ze skolenie je prezencne.
+          example: https://teams.example/mededu/urgent-safety
+        description:
+          type: string
+          example: Interne skolenie pre personal urgentneho prijmu.
+        requirements:
+          type: string
+          example: Zamestnanecky preukaz
+        status:
+          $ref: "#/components/schemas/TrainingStatus"
+        occupied:
+          type: integer
+          format: int32
+          minimum: 0
+          example: 16
+        waitlisted:
+          type: integer
+          format: int32
+          minimum: 0
+          example: 0
+    TrainingInput:
+      type: object
+      required:
+        - title
+        - type
+        - department
+        - startAt
+        - capacity
+        - lecturer
+        - status
+      properties:
+        title:
+          type: string
+          minLength: 3
+          example: BOZP pre urgentny prijem
+        type:
+          $ref: "#/components/schemas/TrainingType"
+        department:
+          type: string
+          example: Urgent
+        startAt:
+          type: string
+          format: date-time
+          example: "2026-05-20T08:00:00Z"
+        capacity:
+          type: integer
+          format: int32
+          minimum: 1
+          example: 20
+        lecturer:
+          type: string
+          example: Mgr. Jana Novakova
+        location:
+          type: string
+          example: Skoliaca miestnost A
+        onlineLink:
+          type: string
+          description: Online link skolenia; prazdny retazec znamena, ze skolenie je prezencne.
+          example: https://teams.example/mededu/urgent-safety
+        description:
+          type: string
+          example: Interne skolenie pre personal urgentneho prijmu.
+        requirements:
+          type: string
+          example: Zamestnanecky preukaz
+        status:
+          $ref: "#/components/schemas/TrainingStatus"
+    ErrorResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          example: Neplatna poziadavka.
+
+  examples:
+    TrainingExample:
+      value:
+        id: urgent-safety-2026-05
+        title: BOZP pre urgentny prijem
+        type: mandatory
+        department: Urgent
+        startAt: "2026-05-20T08:00:00Z"
+        capacity: 20
+        lecturer: Mgr. Jana Novakova
+        location: Skoliaca miestnost A
+        onlineLink: ""
+        description: Interne skolenie pre personal urgentneho prijmu.
+        requirements: Zamestnanecky preukaz
+        status: planned
+        occupied: 16
+        waitlisted: 0
+    TrainingListExample:
+      value:
+        - id: urgent-safety-2026-05
+          title: BOZP pre urgentny prijem
+          type: mandatory
+          department: Urgent
+          startAt: "2026-05-20T08:00:00Z"
+          capacity: 20
+          lecturer: Mgr. Jana Novakova
+          location: Skoliaca miestnost A
+          onlineLink: ""
+          description: Interne skolenie pre personal urgentneho prijmu.
+          requirements: Zamestnanecky preukaz
+          status: planned
+          occupied: 16
+          waitlisted: 0
+        - id: icu-infection-2026-06
+          title: Prevencia infekcii na JIS
+          type: department
+          department: JIS
+          startAt: "2026-06-02T12:30:00Z"
+          capacity: 12
+          lecturer: MUDr. Eva Hruba
+          location: ""
+          onlineLink: https://teams.example/mededu/icu-infection
+          description: Prakticke postupy prevencie nozokomialnych infekcii.
+          requirements: Notebook alebo tablet
+          status: planned
+          occupied: 12
+          waitlisted: 3
+    TrainingInputExample:
+      value:
+        title: BOZP pre urgentny prijem
+        type: mandatory
+        department: Urgent
+        startAt: "2026-05-20T08:00:00Z"
+        capacity: 20
+        lecturer: Mgr. Jana Novakova
+        location: Skoliaca miestnost A
+        onlineLink: ""
+        description: Interne skolenie pre personal urgentneho prijmu.
+        requirements: Zamestnanecky preukaz
+        status: planned
+    DepartmentListExample:
+      value:
+        - Urgent
+        - JIS
+        - Chirurgia
+        - Interné
+        - Pediatria
+        - Radiológia
+        - Anestéziológia
