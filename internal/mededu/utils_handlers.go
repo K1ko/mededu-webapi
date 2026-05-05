@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/K1ko/mededu-webapi/internal/db_service"
 	"github.com/gin-gonic/gin"
@@ -63,11 +64,32 @@ func trainingFromInput(id string, input TrainingInput, existing *Training) Train
 	}
 
 	if existing != nil {
-		training.Occupied = existing.Occupied
-		training.Waitlisted = existing.Waitlisted
+		training.Registrations = existing.Registrations
 	}
 
+	reconcileTrainingRegistrations(&training)
 	return training
+}
+
+func registrationFromInput(id string, trainingId string, input RegistrationInput, existing *Registration) Registration {
+	registration := Registration{
+		Id:            id,
+		TrainingId:    trainingId,
+		EmployeeId:    strings.TrimSpace(input.EmployeeId),
+		EmployeeName:  strings.TrimSpace(input.EmployeeName),
+		EmployeeEmail: strings.TrimSpace(input.EmployeeEmail),
+		Department:    strings.TrimSpace(input.Department),
+		Note:          strings.TrimSpace(input.Note),
+		Status:        REGISTERED,
+		RegisteredAt:  time.Now().UTC(),
+	}
+
+	if existing != nil {
+		registration.Status = existing.Status
+		registration.RegisteredAt = existing.RegisteredAt
+	}
+
+	return registration
 }
 
 func validateTrainingInput(input TrainingInput) string {
@@ -92,6 +114,16 @@ func validateTrainingInput(input TrainingInput) string {
 	return ""
 }
 
+func validateRegistrationInput(input RegistrationInput) string {
+	switch {
+	case strings.TrimSpace(input.EmployeeId) == "":
+		return "Identifikator zamestnanca je povinny."
+	case strings.TrimSpace(input.EmployeeName) == "":
+		return "Meno zamestnanca je povinne."
+	}
+	return ""
+}
+
 func sortedTrainings(trainings []Training) []Training {
 	slices.SortFunc(trainings, func(left, right Training) int {
 		if left.StartAt.Before(right.StartAt) {
@@ -103,6 +135,91 @@ func sortedTrainings(trainings []Training) []Training {
 		return strings.Compare(left.Title, right.Title)
 	})
 	return trainings
+}
+
+func sortedRegistrations(registrations []Registration) []Registration {
+	if registrations == nil {
+		return []Registration{}
+	}
+
+	sorted := append([]Registration(nil), registrations...)
+	slices.SortStableFunc(sorted, func(left, right Registration) int {
+		if left.Status != right.Status {
+			if left.Status == REGISTERED {
+				return -1
+			}
+			if right.Status == REGISTERED {
+				return 1
+			}
+		}
+		if left.RegisteredAt.Before(right.RegisteredAt) {
+			return -1
+		}
+		if left.RegisteredAt.After(right.RegisteredAt) {
+			return 1
+		}
+		return strings.Compare(left.EmployeeName, right.EmployeeName)
+	})
+	return sorted
+}
+
+func reconcileTrainingRegistrations(training *Training) {
+	if training.Registrations == nil {
+		training.Registrations = []Registration{}
+	}
+
+	slices.SortStableFunc(training.Registrations, func(left, right Registration) int {
+		if left.RegisteredAt.Before(right.RegisteredAt) {
+			return -1
+		}
+		if left.RegisteredAt.After(right.RegisteredAt) {
+			return 1
+		}
+		return strings.Compare(left.Id, right.Id)
+	})
+
+	training.Occupied = 0
+	training.Waitlisted = 0
+	for index := range training.Registrations {
+		training.Registrations[index].TrainingId = training.Id
+		if training.Occupied < training.Capacity {
+			training.Registrations[index].Status = REGISTERED
+			training.Occupied++
+			continue
+		}
+		training.Registrations[index].Status = WAITLISTED
+		training.Waitlisted++
+	}
+}
+
+func findRegistration(training *Training, registrationId string) (Registration, bool) {
+	index := findRegistrationIndex(training, registrationId)
+	if index == -1 {
+		return Registration{}, false
+	}
+	return training.Registrations[index], true
+}
+
+func findRegistrationIndex(training *Training, registrationId string) int {
+	for index, registration := range training.Registrations {
+		if registration.Id == registrationId {
+			return index
+		}
+	}
+	return -1
+}
+
+func hasEmployeeRegistration(training *Training, employeeId string, excludedRegistrationId string) bool {
+	employeeId = strings.TrimSpace(employeeId)
+	for _, registration := range training.Registrations {
+		if registration.Id == excludedRegistrationId {
+			continue
+		}
+		if strings.EqualFold(strings.TrimSpace(registration.EmployeeId), employeeId) {
+			return true
+		}
+	}
+	return false
 }
 
 func departmentsFromTrainings(trainings []Training) []string {

@@ -43,4 +43,6 @@ type Training struct {
 	Occupied int32 `json:"occupied"`
 
 	Waitlisted int32 `json:"waitlisted"`
+
+	Registrations []Registration `json:"registrations,omitempty"`
 }

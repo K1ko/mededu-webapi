@@ -45,8 +45,9 @@ func main() {
 	})
 
 	handleFunctions := mededu.ApiHandleFunctions{
-		DepartmentsAPI: mededu.NewDepartmentsAPI(),
-		TrainingsAPI:   mededu.NewTrainingsAPI(),
+		DepartmentsAPI:   mededu.NewDepartmentsAPI(),
+		RegistrationsAPI: mededu.NewRegistrationsAPI(),
+		TrainingsAPI:     mededu.NewTrainingsAPI(),
 	}
 	mededu.NewRouterWithGinEngine(engine, handleFunctions)
 

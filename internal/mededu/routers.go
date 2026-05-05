@@ -65,6 +65,8 @@ type ApiHandleFunctions struct {
 
 	// Routes for the DepartmentsAPI part of the API
 	DepartmentsAPI DepartmentsAPI
+	// Routes for the RegistrationsAPI part of the API
+	RegistrationsAPI RegistrationsAPI
 	// Routes for the TrainingsAPI part of the API
 	TrainingsAPI TrainingsAPI
 }
@@ -76,6 +78,36 @@ func getRoutes(handleFunctions ApiHandleFunctions) []Route {
 			http.MethodGet,
 			"/api/departments",
 			handleFunctions.DepartmentsAPI.ListDepartments,
+		},
+		{
+			"CreateRegistration",
+			http.MethodPost,
+			"/api/trainings/:trainingId/registrations",
+			handleFunctions.RegistrationsAPI.CreateRegistration,
+		},
+		{
+			"DeleteRegistration",
+			http.MethodDelete,
+			"/api/trainings/:trainingId/registrations/:registrationId",
+			handleFunctions.RegistrationsAPI.DeleteRegistration,
+		},
+		{
+			"GetRegistration",
+			http.MethodGet,
+			"/api/trainings/:trainingId/registrations/:registrationId",
+			handleFunctions.RegistrationsAPI.GetRegistration,
+		},
+		{
+			"ListRegistrations",
+			http.MethodGet,
+			"/api/trainings/:trainingId/registrations",
+			handleFunctions.RegistrationsAPI.ListRegistrations,
+		},
+		{
+			"UpdateRegistration",
+			http.MethodPut,
+			"/api/trainings/:trainingId/registrations/:registrationId",
+			handleFunctions.RegistrationsAPI.UpdateRegistration,
 		},
 		{
 			"CreateTraining",

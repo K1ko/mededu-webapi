@@ -11,6 +11,8 @@ servers:
 tags:
   - name: trainings
     description: Katalog internych skoleni
+  - name: registrations
+    description: Registracie zamestnancov na skolenia
   - name: departments
     description: Oddelenia a odbornosti pouzivane pri planovani skoleni
 
@@ -145,6 +147,144 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /trainings/{trainingId}/registrations:
+    get:
+      tags:
+        - registrations
+      operationId: listRegistrations
+      summary: Zoznam registracii na skolenie
+      description: Vrati prihlasenych ucastnikov a nahradnikov pre konkretne skolenie.
+      parameters:
+        - $ref: "#/components/parameters/TrainingId"
+      responses:
+        "200":
+          description: Zoznam registracii bol nacitany.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Registration"
+              examples:
+                default:
+                  $ref: "#/components/examples/RegistrationListExample"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags:
+        - registrations
+      operationId: createRegistration
+      summary: Prihlasenie zamestnanca na skolenie
+      description: Vytvori registraciu zamestnanca a podla kapacity ho zaradi medzi prihlasenych alebo nahradnikov.
+      parameters:
+        - $ref: "#/components/parameters/TrainingId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistrationInput"
+            examples:
+              default:
+                $ref: "#/components/examples/RegistrationInputExample"
+      responses:
+        "201":
+          description: Registracia bola vytvorena.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Registration"
+              examples:
+                default:
+                  $ref: "#/components/examples/RegistrationExample"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /trainings/{trainingId}/registrations/{registrationId}:
+    get:
+      tags:
+        - registrations
+      operationId: getRegistration
+      summary: Detail registracie
+      description: Vrati detail registracie konkretneho zamestnanca na skoleni.
+      parameters:
+        - $ref: "#/components/parameters/TrainingId"
+        - $ref: "#/components/parameters/RegistrationId"
+      responses:
+        "200":
+          description: Registracia bola nacitana.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Registration"
+              examples:
+                default:
+                  $ref: "#/components/examples/RegistrationExample"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    put:
+      tags:
+        - registrations
+      operationId: updateRegistration
+      summary: Uprava registracie
+      description: Aktualizuje udaje registracie alebo presunie zamestnanca na iny termin pomocou targetTrainingId.
+      parameters:
+        - $ref: "#/components/parameters/TrainingId"
+        - $ref: "#/components/parameters/RegistrationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistrationInput"
+            examples:
+              default:
+                $ref: "#/components/examples/RegistrationInputExample"
+      responses:
+        "200":
+          description: Registracia bola upravena.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Registration"
+              examples:
+                default:
+                  $ref: "#/components/examples/RegistrationExample"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    delete:
+      tags:
+        - registrations
+      operationId: deleteRegistration
+      summary: Odhlasenie zo skolenia
+      description: Odstrani registraciu zo skolenia a uvolni kapacitu dalsiemu nahradnikovi.
+      parameters:
+        - $ref: "#/components/parameters/TrainingId"
+        - $ref: "#/components/parameters/RegistrationId"
+      responses:
+        "204":
+          description: Registracia bola odstranena.
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /departments:
     get:
       tags:
@@ -177,6 +317,14 @@ components:
       schema:
         type: string
         example: urgent-safety-2026-05
+    RegistrationId:
+      name: registrationId
+      in: path
+      required: true
+      description: Jedinecny identifikator registracie.
+      schema:
+        type: string
+        example: reg-urgent-001
 
   responses:
     BadRequest:
@@ -199,6 +347,16 @@ components:
             default:
               value:
                 message: Skolenie nebolo najdene.
+    Conflict:
+      description: Poziadavka je v konflikte s aktualnym stavom zaznamu.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            default:
+              value:
+                message: Zamestnanec je uz na skolenie prihlaseny.
     ServerError:
       description: Interna chyba servera.
       content:
@@ -226,6 +384,74 @@ components:
         - specialization
         - online
       example: mandatory
+    RegistrationStatus:
+      type: string
+      enum:
+        - registered
+        - waitlisted
+      example: registered
+    Registration:
+      type: object
+      required:
+        - id
+        - trainingId
+        - employeeId
+        - employeeName
+        - status
+        - registeredAt
+      properties:
+        id:
+          type: string
+          example: reg-urgent-001
+        trainingId:
+          type: string
+          example: urgent-safety-2026-05
+        employeeId:
+          type: string
+          example: EMP-1042
+        employeeName:
+          type: string
+          example: Bc. Peter Malina
+        employeeEmail:
+          type: string
+          example: peter.malina@hospital.example
+        department:
+          type: string
+          example: Urgent
+        note:
+          type: string
+          example: Uprednostnuje ranny termin.
+        status:
+          $ref: "#/components/schemas/RegistrationStatus"
+        registeredAt:
+          type: string
+          format: date-time
+          example: "2026-05-01T09:15:00Z"
+    RegistrationInput:
+      type: object
+      required:
+        - employeeId
+        - employeeName
+      properties:
+        employeeId:
+          type: string
+          example: EMP-1042
+        employeeName:
+          type: string
+          example: Bc. Peter Malina
+        employeeEmail:
+          type: string
+          example: peter.malina@hospital.example
+        department:
+          type: string
+          example: Urgent
+        note:
+          type: string
+          example: Uprednostnuje ranny termin.
+        targetTrainingId:
+          type: string
+          description: Volitelny cielovy termin pri presune existujucej registracie.
+          example: icu-infection-2026-06
     Training:
       type: object
       required:
@@ -289,6 +515,10 @@ components:
           format: int32
           minimum: 0
           example: 0
+        registrations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Registration"
     TrainingInput:
       type: object
       required:
@@ -360,8 +590,18 @@ components:
         description: Interne skolenie pre personal urgentneho prijmu.
         requirements: Zamestnanecky preukaz
         status: planned
-        occupied: 16
+        occupied: 1
         waitlisted: 0
+        registrations:
+          - id: reg-urgent-001
+            trainingId: urgent-safety-2026-05
+            employeeId: EMP-1042
+            employeeName: Bc. Peter Malina
+            employeeEmail: peter.malina@hospital.example
+            department: Urgent
+            note: Uprednostnuje ranny termin.
+            status: registered
+            registeredAt: "2026-05-01T09:15:00Z"
     TrainingListExample:
       value:
         - id: urgent-safety-2026-05
@@ -376,22 +616,51 @@ components:
           description: Interne skolenie pre personal urgentneho prijmu.
           requirements: Zamestnanecky preukaz
           status: planned
-          occupied: 16
+          occupied: 1
           waitlisted: 0
+          registrations:
+            - id: reg-urgent-001
+              trainingId: urgent-safety-2026-05
+              employeeId: EMP-1042
+              employeeName: Bc. Peter Malina
+              employeeEmail: peter.malina@hospital.example
+              department: Urgent
+              note: Uprednostnuje ranny termin.
+              status: registered
+              registeredAt: "2026-05-01T09:15:00Z"
         - id: icu-infection-2026-06
           title: Prevencia infekcii na JIS
           type: department
           department: JIS
           startAt: "2026-06-02T12:30:00Z"
-          capacity: 12
+          capacity: 1
           lecturer: MUDr. Eva Hruba
           location: ""
           onlineLink: https://teams.example/mededu/icu-infection
           description: Prakticke postupy prevencie nozokomialnych infekcii.
           requirements: Notebook alebo tablet
           status: planned
-          occupied: 12
-          waitlisted: 3
+          occupied: 1
+          waitlisted: 1
+          registrations:
+            - id: reg-icu-001
+              trainingId: icu-infection-2026-06
+              employeeId: EMP-2018
+              employeeName: MUDr. Tomas Benko
+              employeeEmail: tomas.benko@hospital.example
+              department: JIS
+              note: ""
+              status: registered
+              registeredAt: "2026-05-05T07:30:00Z"
+            - id: reg-icu-002
+              trainingId: icu-infection-2026-06
+              employeeId: EMP-2034
+              employeeName: Mgr. Andrea Polakova
+              employeeEmail: andrea.polakova@hospital.example
+              department: JIS
+              note: Moze prist aj na nahradny termin.
+              status: waitlisted
+              registeredAt: "2026-05-06T10:20:00Z"
     TrainingInputExample:
       value:
         title: BOZP pre urgentny prijem
@@ -405,6 +674,44 @@ components:
         description: Interne skolenie pre personal urgentneho prijmu.
         requirements: Zamestnanecky preukaz
         status: planned
+    RegistrationExample:
+      value:
+        id: reg-urgent-001
+        trainingId: urgent-safety-2026-05
+        employeeId: EMP-1042
+        employeeName: Bc. Peter Malina
+        employeeEmail: peter.malina@hospital.example
+        department: Urgent
+        note: Uprednostnuje ranny termin.
+        status: registered
+        registeredAt: "2026-05-01T09:15:00Z"
+    RegistrationListExample:
+      value:
+        - id: reg-urgent-001
+          trainingId: urgent-safety-2026-05
+          employeeId: EMP-1042
+          employeeName: Bc. Peter Malina
+          employeeEmail: peter.malina@hospital.example
+          department: Urgent
+          note: Uprednostnuje ranny termin.
+          status: registered
+          registeredAt: "2026-05-01T09:15:00Z"
+        - id: reg-urgent-002
+          trainingId: urgent-safety-2026-05
+          employeeId: EMP-1077
+          employeeName: Mgr. Lucia Krizova
+          employeeEmail: lucia.krizova@hospital.example
+          department: Chirurgia
+          note: ""
+          status: waitlisted
+          registeredAt: "2026-05-03T13:40:00Z"
+    RegistrationInputExample:
+      value:
+        employeeId: EMP-1042
+        employeeName: Bc. Peter Malina
+        employeeEmail: peter.malina@hospital.example
+        department: Urgent
+        note: Uprednostnuje ranny termin.
     DepartmentListExample:
       value:
         - Urgent

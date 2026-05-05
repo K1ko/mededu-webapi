@@ -37,6 +37,7 @@ db.createCollection(collection);
 db[collection].createIndex({ "id": 1 }, { unique: true });
 db[collection].createIndex({ "department": 1 });
 db[collection].createIndex({ "startAt": 1 });
+db[collection].createIndex({ "registrations.employeeId": 1 });
 
 const result = db[collection].insertMany([
     {
@@ -52,8 +53,32 @@ const result = db[collection].insertMany([
         "description": "Interne skolenie pre personal urgentneho prijmu.",
         "requirements": "Zamestnanecky preukaz",
         "status": "planned",
-        "occupied": 16,
-        "waitlisted": 0
+        "occupied": 2,
+        "waitlisted": 0,
+        "registrations": [
+            {
+                "id": "reg-urgent-001",
+                "trainingId": "urgent-safety-2026-05",
+                "employeeId": "EMP-1042",
+                "employeeName": "Bc. Peter Malina",
+                "employeeEmail": "peter.malina@hospital.example",
+                "department": "Urgent",
+                "note": "Uprednostnuje ranny termin.",
+                "status": "registered",
+                "registeredAt": new Date("2026-05-01T09:15:00Z")
+            },
+            {
+                "id": "reg-urgent-002",
+                "trainingId": "urgent-safety-2026-05",
+                "employeeId": "EMP-1077",
+                "employeeName": "Mgr. Lucia Krizova",
+                "employeeEmail": "lucia.krizova@hospital.example",
+                "department": "Chirurgia",
+                "note": "",
+                "status": "registered",
+                "registeredAt": new Date("2026-05-03T13:40:00Z")
+            }
+        ]
     },
     {
         "id": "icu-infection-2026-06",
@@ -61,15 +86,39 @@ const result = db[collection].insertMany([
         "type": "department",
         "department": "JIS",
         "startAt": new Date("2026-06-02T12:30:00Z"),
-        "capacity": 12,
+        "capacity": 1,
         "lecturer": "MUDr. Eva Hruba",
         "location": "",
         "onlineLink": "https://teams.example/mededu/icu-infection",
         "description": "Prakticke postupy prevencie nozokomialnych infekcii.",
         "requirements": "Notebook alebo tablet",
         "status": "planned",
-        "occupied": 12,
-        "waitlisted": 3
+        "occupied": 1,
+        "waitlisted": 1,
+        "registrations": [
+            {
+                "id": "reg-icu-001",
+                "trainingId": "icu-infection-2026-06",
+                "employeeId": "EMP-2018",
+                "employeeName": "MUDr. Tomas Benko",
+                "employeeEmail": "tomas.benko@hospital.example",
+                "department": "JIS",
+                "note": "",
+                "status": "registered",
+                "registeredAt": new Date("2026-05-05T07:30:00Z")
+            },
+            {
+                "id": "reg-icu-002",
+                "trainingId": "icu-infection-2026-06",
+                "employeeId": "EMP-2034",
+                "employeeName": "Mgr. Andrea Polakova",
+                "employeeEmail": "andrea.polakova@hospital.example",
+                "department": "JIS",
+                "note": "Moze prist aj na nahradny termin.",
+                "status": "waitlisted",
+                "registeredAt": new Date("2026-05-06T10:20:00Z")
+            }
+        ]
     }
 ]);
 

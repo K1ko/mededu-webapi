@@ -80,9 +80,25 @@ func (suite *TrainingsSuite) SetupTest() {
 			Lecturer:   "Mgr. Jana Novakova",
 			Location:   "Skoliaca miestnost A",
 			Status:     PLANNED,
-			Occupied:   8,
-			Waitlisted: 2,
-		}, nil)
+			Occupied:   2,
+			Waitlisted: 0,
+			Registrations: []Registration{
+				testRegistration("reg-001", "EMP-001", "Peter Malina", time.Date(2026, 5, 1, 8, 0, 0, 0, time.UTC)),
+				testRegistration("reg-002", "EMP-002", "Lucia Krizova", time.Date(2026, 5, 2, 8, 0, 0, 0, time.UTC)),
+			},
+		}, nil).
+		Maybe()
+}
+
+func testRegistration(id string, employeeId string, employeeName string, registeredAt time.Time) Registration {
+	return Registration{
+		Id:           id,
+		TrainingId:   "test-training",
+		EmployeeId:   employeeId,
+		EmployeeName: employeeName,
+		Status:       REGISTERED,
+		RegisteredAt: registeredAt,
+	}
 }
 
 func (suite *TrainingsSuite) Test_UpdateTraining_DbServiceUpdateCalled() {
@@ -94,8 +110,9 @@ func (suite *TrainingsSuite) Test_UpdateTraining_DbServiceUpdateCalled() {
 				training.Type == DEPARTMENT &&
 				training.Department == "JIS" &&
 				training.Capacity == 24 &&
-				training.Occupied == 8 &&
-				training.Waitlisted == 2
+				training.Occupied == 2 &&
+				training.Waitlisted == 0 &&
+				len(training.Registrations) == 2
 		})).
 		Return(nil)
 
@@ -130,5 +147,117 @@ func (suite *TrainingsSuite) Test_UpdateTraining_DbServiceUpdateCalled() {
 
 	// ASSERT
 	suite.Equal(http.StatusOK, recorder.Code)
+	suite.dbServiceMock.AssertExpectations(suite.T())
+}
+
+func (suite *TrainingsSuite) Test_CreateRegistration_WaitlistsWhenCapacityIsFull() {
+	// ARRANGE
+	suite.dbServiceMock.
+		On("FindDocument", mock.Anything, "full-training").
+		Return(&Training{
+			Id:         "full-training",
+			Title:      "Plne skolenie",
+			Type:       MANDATORY,
+			Department: "Urgent",
+			StartAt:    time.Date(2026, 5, 20, 8, 0, 0, 0, time.UTC),
+			Capacity:   1,
+			Lecturer:   "Mgr. Jana Novakova",
+			Status:     PLANNED,
+			Occupied:   1,
+			Registrations: []Registration{
+				testRegistration("reg-001", "EMP-001", "Peter Malina", time.Date(2026, 5, 1, 8, 0, 0, 0, time.UTC)),
+			},
+		}, nil)
+
+	suite.dbServiceMock.
+		On("UpdateDocument", mock.Anything, "full-training", mock.MatchedBy(func(training *Training) bool {
+			return training.Id == "full-training" &&
+				training.Occupied == 1 &&
+				training.Waitlisted == 1 &&
+				len(training.Registrations) == 2 &&
+				training.Registrations[1].EmployeeId == "EMP-002" &&
+				training.Registrations[1].Status == WAITLISTED
+		})).
+		Return(nil)
+
+	json := `{
+		"employeeId": "EMP-002",
+		"employeeName": "Lucia Krizova",
+		"employeeEmail": "lucia.krizova@hospital.example",
+		"department": "JIS",
+		"note": "Nahradny termin vyhovuje"
+	}`
+
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Set(dbServiceContextKey, suite.dbServiceMock)
+	ctx.Params = []gin.Param{
+		{Key: "trainingId", Value: "full-training"},
+	}
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/api/trainings/full-training/registrations", strings.NewReader(json))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+
+	sut := implRegistrationsAPI{}
+
+	// ACT
+	sut.CreateRegistration(ctx)
+
+	// ASSERT
+	suite.Equal(http.StatusCreated, recorder.Code)
+	suite.dbServiceMock.AssertExpectations(suite.T())
+}
+
+func (suite *TrainingsSuite) Test_DeleteRegistration_PromotesWaitlistedRegistration() {
+	// ARRANGE
+	waitlisted := testRegistration("reg-002", "EMP-002", "Lucia Krizova", time.Date(2026, 5, 2, 8, 0, 0, 0, time.UTC))
+	waitlisted.Status = WAITLISTED
+
+	suite.dbServiceMock.
+		On("FindDocument", mock.Anything, "full-training").
+		Return(&Training{
+			Id:         "full-training",
+			Title:      "Plne skolenie",
+			Type:       MANDATORY,
+			Department: "Urgent",
+			StartAt:    time.Date(2026, 5, 20, 8, 0, 0, 0, time.UTC),
+			Capacity:   1,
+			Lecturer:   "Mgr. Jana Novakova",
+			Status:     PLANNED,
+			Occupied:   1,
+			Waitlisted: 1,
+			Registrations: []Registration{
+				testRegistration("reg-001", "EMP-001", "Peter Malina", time.Date(2026, 5, 1, 8, 0, 0, 0, time.UTC)),
+				waitlisted,
+			},
+		}, nil)
+
+	suite.dbServiceMock.
+		On("UpdateDocument", mock.Anything, "full-training", mock.MatchedBy(func(training *Training) bool {
+			return training.Occupied == 1 &&
+				training.Waitlisted == 0 &&
+				len(training.Registrations) == 1 &&
+				training.Registrations[0].Id == "reg-002" &&
+				training.Registrations[0].Status == REGISTERED
+		})).
+		Return(nil)
+
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Set(dbServiceContextKey, suite.dbServiceMock)
+	ctx.Params = []gin.Param{
+		{Key: "trainingId", Value: "full-training"},
+		{Key: "registrationId", Value: "reg-001"},
+	}
+	ctx.Request = httptest.NewRequest(http.MethodDelete, "/api/trainings/full-training/registrations/reg-001", nil)
+
+	sut := implRegistrationsAPI{}
+
+	// ACT
+	sut.DeleteRegistration(ctx)
+
+	// ASSERT
+	suite.Equal(http.StatusNoContent, recorder.Code)
 	suite.dbServiceMock.AssertExpectations(suite.T())
 }
