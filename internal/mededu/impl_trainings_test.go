@@ -261,3 +261,40 @@ func (suite *TrainingsSuite) Test_DeleteRegistration_PromotesWaitlistedRegistrat
 	suite.Equal(http.StatusNoContent, recorder.Code)
 	suite.dbServiceMock.AssertExpectations(suite.T())
 }
+
+func (suite *TrainingsSuite) Test_SortedRegistrations_ReturnsNonNilSliceForEmptyInput() {
+	suite.NotNil(sortedRegistrations(nil))
+	suite.NotNil(sortedRegistrations([]Registration{}))
+	suite.Empty(sortedRegistrations(nil))
+	suite.Empty(sortedRegistrations([]Registration{}))
+}
+
+func (suite *TrainingsSuite) Test_TrainingForResponse_RecalculatesCountsFromRegistrations() {
+	waitlisted := testRegistration("reg-003", "EMP-003", "Tomas Hruska", time.Date(2026, 5, 3, 8, 0, 0, 0, time.UTC))
+	waitlisted.Status = WAITLISTED
+
+	training := trainingForResponse(Training{
+		Id:         "stale-training",
+		Title:      "Skolenie so starymi poctami",
+		Type:       DEPARTMENT,
+		Department: "JIS",
+		StartAt:    time.Date(2026, 6, 2, 12, 30, 0, 0, time.UTC),
+		Capacity:   2,
+		Lecturer:   "MUDr. Eva Hruba",
+		Status:     PLANNED,
+		Occupied:   0,
+		Waitlisted: 0,
+		Registrations: []Registration{
+			testRegistration("reg-001", "EMP-001", "Peter Malina", time.Date(2026, 5, 1, 8, 0, 0, 0, time.UTC)),
+			testRegistration("reg-002", "EMP-002", "Lucia Krizova", time.Date(2026, 5, 2, 8, 0, 0, 0, time.UTC)),
+			waitlisted,
+		},
+	})
+
+	suite.Equal(int32(2), training.Occupied)
+	suite.Equal(int32(1), training.Waitlisted)
+	suite.Len(training.Registrations, 3)
+	suite.Equal(REGISTERED, training.Registrations[0].Status)
+	suite.Equal(REGISTERED, training.Registrations[1].Status)
+	suite.Equal(WAITLISTED, training.Registrations[2].Status)
+}

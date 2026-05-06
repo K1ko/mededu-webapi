@@ -235,6 +235,7 @@ func findTrainingForRegistration(c *gin.Context, db db_service.DbService[Trainin
 	training, err := db.FindDocument(c.Request.Context(), c.Param("trainingId"))
 	switch {
 	case err == nil:
+		reconcileTrainingRegistrations(training)
 		return training, true
 	case errors.Is(err, db_service.ErrNotFound):
 		writeError(c, http.StatusNotFound, "Skolenie nebolo najdene", err)

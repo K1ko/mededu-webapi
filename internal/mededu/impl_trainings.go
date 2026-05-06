@@ -72,7 +72,7 @@ func (o implTrainingsAPI) GetTraining(c *gin.Context) {
 	training, err := db.FindDocument(c.Request.Context(), c.Param("trainingId"))
 	switch {
 	case err == nil:
-		c.JSON(http.StatusOK, training)
+		c.JSON(http.StatusOK, trainingForResponse(*training))
 	case errors.Is(err, db_service.ErrNotFound):
 		writeError(c, http.StatusNotFound, "Skolenie nebolo najdene", err)
 	default:
@@ -103,7 +103,7 @@ func (o implTrainingsAPI) ListTrainings(c *gin.Context) {
 		trainings = filtered
 	}
 
-	c.JSON(http.StatusOK, sortedTrainings(trainings))
+	c.JSON(http.StatusOK, sortedTrainings(trainingsForResponse(trainings)))
 }
 
 func (o implTrainingsAPI) UpdateTraining(c *gin.Context) {

@@ -71,6 +71,20 @@ func trainingFromInput(id string, input TrainingInput, existing *Training) Train
 	return training
 }
 
+func trainingForResponse(training Training) Training {
+	training.Registrations = append([]Registration{}, training.Registrations...)
+	reconcileTrainingRegistrations(&training)
+	return training
+}
+
+func trainingsForResponse(trainings []Training) []Training {
+	normalized := make([]Training, 0, len(trainings))
+	for _, training := range trainings {
+		normalized = append(normalized, trainingForResponse(training))
+	}
+	return normalized
+}
+
 func registrationFromInput(id string, trainingId string, input RegistrationInput, existing *Registration) Registration {
 	registration := Registration{
 		Id:            id,
@@ -138,11 +152,7 @@ func sortedTrainings(trainings []Training) []Training {
 }
 
 func sortedRegistrations(registrations []Registration) []Registration {
-	if registrations == nil {
-		return []Registration{}
-	}
-
-	sorted := append([]Registration(nil), registrations...)
+	sorted := append([]Registration{}, registrations...)
 	slices.SortStableFunc(sorted, func(left, right Registration) int {
 		if left.Status != right.Status {
 			if left.Status == REGISTERED {
